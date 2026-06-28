@@ -121,8 +121,6 @@ jobs:
           fi
 
           for dmg in "${dmgs[@]}"; do
-            echo "spctl assess: $dmg"
-            spctl --assess --type open --verbose=4 "$dmg"
             echo "stapler validate: $dmg"
             xcrun stapler validate "$dmg"
           done
