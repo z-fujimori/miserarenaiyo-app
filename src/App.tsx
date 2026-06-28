@@ -1,49 +1,76 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./App.css";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+type OverlayItemType = "type1" | "type2";
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+const overlayLabels: Record<OverlayItemType, string> = {
+  type1: "Type1",
+  type2: "Type2",
+};
+
+function App() {
+  const [itemType, setItemType] = useState<OverlayItemType>("type1");
+
+  const startDragging = () => {
+    void getCurrentWindow().startDragging();
+  };
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        void invoke("hide_overlay");
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+
+    void invoke<OverlayItemType>("get_overlay_item_type").then((value) => {
+      setItemType(value);
+    });
+
+    let unlisten: (() => void) | undefined;
+    void listen<OverlayItemType>("overlay-item-type-changed", (event) => {
+      setItemType(event.payload);
+    }).then((dispose) => {
+      unlisten = dispose;
+    });
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      unlisten?.();
+    };
+  }, []);
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <main
+      className="overlay-root"
+      data-item-type={itemType}
+      onMouseDown={(event) => {
+        if (event.button !== 0) {
+          return;
+        }
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
+        event.preventDefault();
+        startDragging();
+      }}
+    >
+      {itemType === "type1" ? (
+        <img
+          className="overlay-visual overlay-visual-image"
+          src="/img/miserarenaiyo_touka.png"
+          alt={overlayLabels[itemType]}
+          draggable={false}
         />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
+      ) : (
+        <div
+          className="overlay-visual overlay-visual-block"
+          role="img"
+          aria-label={overlayLabels[itemType]}
+        />
+      )}
     </main>
   );
 }
