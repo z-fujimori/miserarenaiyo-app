@@ -108,6 +108,39 @@ jobs:
           releaseDraft: false
           prerelease: false
 
+      - name: Notarize and staple DMG
+        if: success()
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_PATH: ${{ runner.temp }}/private_keys/AuthKey.p8
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          dmgs=(src-tauri/target/release/bundle/dmg/*.dmg)
+
+          if [ "${#dmgs[@]}" -eq 0 ]; then
+            echo "No .dmg bundle found"
+            exit 1
+          fi
+
+          for dmg in "${dmgs[@]}"; do
+            echo "notarytool submit: $dmg"
+            xcrun notarytool submit "$dmg" \
+              --key "$APPLE_API_KEY_PATH" \
+              --key-id "$APPLE_API_KEY_ID" \
+              --issuer "$APPLE_API_ISSUER" \
+              --wait
+
+            echo "stapler staple: $dmg"
+            xcrun stapler staple "$dmg"
+
+            echo "re-upload notarized asset: $dmg"
+            gh release upload "$GITHUB_REF_NAME" "$dmg" --clobber --repo "$GITHUB_REPOSITORY"
+          done
+
       - name: Verify macOS bundle
         if: success()
         run: |
