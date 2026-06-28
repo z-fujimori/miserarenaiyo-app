@@ -322,7 +322,7 @@ fn create_overlay_window<R: Runtime, M: Manager<R>>(
     let overlay_window = WebviewWindowBuilder::new(manager, OVERLAY_LABEL, WebviewUrl::default())
         .title("Miserarenaiyo Overlay")
         .inner_size(width, height)
-        .resizable(false)
+        .resizable(true)
         .decorations(false)
         .transparent(true)
         .shadow(false)

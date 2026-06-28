@@ -28,8 +28,7 @@ body {
 .overlay-root {
   width: 100%;
   height: 100%;
-  display: grid;
-  place-items: stretch;
+  position: relative;
   background: transparent;
   cursor: move;
 }
@@ -40,6 +39,7 @@ body {
   display: block;
   -webkit-user-drag: none;
   cursor: move;
+  pointer-events: none;
 }
 
 .overlay-visual-image {
@@ -47,9 +47,65 @@ body {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-  pointer-events: none;
 }
 
 .overlay-visual-block {
-  background: #000;
+  background: repeating-linear-gradient(
+    135deg,
+    #6f6f6f 0,
+    #6f6f6f 12px,
+    #555555 12px,
+    #555555 24px
+  );
+}
+
+.overlay-resize-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  opacity: 0.6;
+  z-index: 2;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.overlay-resize-handle:hover {
+  opacity: 0.9;
+}
+
+.overlay-resize-handle--nw {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+  border-top: 2px solid rgba(255, 255, 255, 0.55);
+  border-left: 2px solid rgba(255, 255, 255, 0.55);
+}
+
+.overlay-resize-handle--ne {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+  border-top: 2px solid rgba(255, 255, 255, 0.55);
+  border-right: 2px solid rgba(255, 255, 255, 0.55);
+}
+
+.overlay-resize-handle--sw {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.55);
+  border-left: 2px solid rgba(255, 255, 255, 0.55);
+}
+
+.overlay-resize-handle--se {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+  border-right: 2px solid rgba(255, 255, 255, 0.55);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.55);
 }

@@ -5,17 +5,41 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./App.css";
 
 type OverlayItemType = "type1" | "type2";
+type ResizeDirection =
+  | "East"
+  | "North"
+  | "NorthEast"
+  | "NorthWest"
+  | "South"
+  | "SouthEast"
+  | "SouthWest"
+  | "West";
 
 const overlayLabels: Record<OverlayItemType, string> = {
   type1: "Type1",
   type2: "Type2",
 };
 
+const resizeHandleDirections: Array<{
+  className: string;
+  direction: ResizeDirection;
+  label: string;
+}> = [
+  { className: "overlay-resize-handle--nw", direction: "NorthWest", label: "Resize top left" },
+  { className: "overlay-resize-handle--ne", direction: "NorthEast", label: "Resize top right" },
+  { className: "overlay-resize-handle--sw", direction: "SouthWest", label: "Resize bottom left" },
+  { className: "overlay-resize-handle--se", direction: "SouthEast", label: "Resize bottom right" },
+];
+
 function App() {
   const [itemType, setItemType] = useState<OverlayItemType>("type1");
 
   const startDragging = () => {
     void getCurrentWindow().startDragging();
+  };
+
+  const startResizing = (direction: ResizeDirection) => {
+    void getCurrentWindow().startResizeDragging(direction);
   };
 
   useEffect(() => {
@@ -71,6 +95,23 @@ function App() {
           aria-label={overlayLabels[itemType]}
         />
       )}
+      {resizeHandleDirections.map(({ className, direction, label }) => (
+        <button
+          key={direction}
+          type="button"
+          className={`overlay-resize-handle ${className}`}
+          aria-label={label}
+          onMouseDown={(event) => {
+            if (event.button !== 0) {
+              return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            startResizing(direction);
+          }}
+        />
+      ))}
     </main>
   );
 }
