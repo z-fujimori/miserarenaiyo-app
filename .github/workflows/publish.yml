@@ -89,7 +89,6 @@ jobs:
           releaseName: "Release ${{ github.ref_name }}"
           releaseDraft: false
           prerelease: false
-          args: build --verbose
 
       - name: Verify macOS bundle
         if: success()
