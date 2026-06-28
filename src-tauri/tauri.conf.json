@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "miserarenaiyo",
+  "productName": "Miserarenaiyo",
   "version": "0.1.0",
   "identifier": "com.fujim.miserarenaiyo",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "miserarenaiyo",
+        "title": "Miserarenaiyo",
         "width": 240,
         "height": 240,
         "visible": false

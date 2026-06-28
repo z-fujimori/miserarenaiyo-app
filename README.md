@@ -1,7 +1,51 @@
-# Tauri + React + Typescript
+# Miserarenaiyo
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+Miserarenaiyo は、画面の上に小さなオーバーレイを表示するアプリです。
 
-## Recommended IDE Setup
+起動するとメイン画面は表示されず、オーバーレイだけが使える状態になります。  
+必要に応じて表示・非表示を切り替えたり、`Type1` と `Type2` を切り替えたりできます。
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## できること
+
+- オーバーレイを表示する
+- オーバーレイを隠す
+- `Type1` / `Type2` を切り替える
+- オーバーレイをドラッグして移動する
+- 右上・左上・右下・左下のハンドルでサイズを変更する
+
+## 使い方
+
+### 起動
+
+アプリを起動すると、オーバーレイが自動で表示されます。
+
+### 移動
+
+オーバーレイ本体をドラッグすると、好きな位置に移動できます。
+
+### サイズ変更
+
+四隅にある小さなハンドルをドラッグすると、サイズを変更できます。
+
+### 表示・非表示の切り替え
+
+- トレイメニューから `Show Overlay` / `Hide Overlay` を選べます
+- `Esc` キーでオーバーレイを隠せます
+- `Cmd + B` でも切り替えられます
+
+## Type1 と Type2
+
+- `Type1`: 画像のオーバーレイ
+- `Type2`: グレーのストライプのオーバーレイ
+
+トレイメニューから切り替えられます。
+
+## 終了
+
+トレイメニューから `Quit` を選ぶとアプリを終了できます。
+
+## 注意
+
+- `Cmd + B` のショートカットは macOS で有効です
+- オーバーレイは閉じるのではなく、非表示になります
+
