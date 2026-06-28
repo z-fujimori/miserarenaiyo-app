@@ -56,8 +56,14 @@ jobs:
               echo "$name: set"
             else
               echo "$name: missing"
+              missing=1
             fi
           done
+
+          if [ "${missing:-0}" -ne 0 ]; then
+            echo "One or more signing inputs are missing. Aborting release build."
+            exit 1
+          fi
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -93,6 +99,7 @@ jobs:
       - name: Verify macOS bundle
         if: success()
         run: |
+          set -euo pipefail
           shopt -s nullglob
 
           apps=(src-tauri/target/release/bundle/macos/*.app)
@@ -106,8 +113,6 @@ jobs:
           for app in "${apps[@]}"; do
             echo "codesign verify: $app"
             codesign --verify --deep --strict --verbose=4 "$app"
-            echo "spctl assess: $app"
-            spctl --assess --type execute --verbose=4 "$app"
           done
 
           if [ "${#dmgs[@]}" -eq 0 ]; then
@@ -116,6 +121,8 @@ jobs:
           fi
 
           for dmg in "${dmgs[@]}"; do
+            echo "spctl assess: $dmg"
+            spctl --assess --type open --verbose=4 "$dmg"
             echo "stapler validate: $dmg"
             xcrun stapler validate "$dmg"
           done
