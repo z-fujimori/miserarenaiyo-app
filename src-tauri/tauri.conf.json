@@ -14,8 +14,10 @@
       {
         "label": "main",
         "title": "Miserarenaiyo",
-        "width": 240,
-        "height": 240,
+        "width": 320,
+        "height": 132,
+        "resizable": false,
+        "center": true,
         "visible": false
       }
     ],

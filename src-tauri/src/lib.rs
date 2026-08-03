@@ -3,20 +3,23 @@ use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use tauri::{
     menu::{CheckMenuItemBuilder, Menu, MenuBuilder, MenuItemBuilder},
-    Emitter, LogicalSize, Manager, PhysicalPosition, Position, Runtime, Size, State, WebviewUrl,
-    WebviewWindow, WebviewWindowBuilder,
+    ActivationPolicy, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Runtime, Size,
+    State, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
 };
 
+const MAIN_LABEL: &str = "main";
 const OVERLAY_LABEL: &str = "overlay";
 const TRAY_ID: &str = "miserarenaiyo";
 const CMD_B_HOTKEY_ID: u32 = 1;
 const CMD_B_HOTKEY_SIGNATURE: u32 = u32::from_be_bytes(*b"MRNY");
 const MENU_STATUS_ID: &str = "menu-status";
 const MENU_TOGGLE_ID: &str = "menu-toggle-overlay";
+const MENU_SETTINGS_ID: &str = "menu-toggle-settings";
 const MENU_TYPE1_ID: &str = "menu-type1";
 const MENU_TYPE2_ID: &str = "menu-type2";
 const MENU_QUIT_ID: &str = "menu-quit";
 const OVERLAY_TYPE_CHANGED_EVENT: &str = "overlay-item-type-changed";
+const OVERLAY_VISIBILITY_CHANGED_EVENT: &str = "overlay-visibility-changed";
 
 #[cfg(target_os = "macos")]
 mod macos_global_shortcut {
@@ -261,11 +264,26 @@ fn overlay_is_visible<R: Runtime, M: Manager<R>>(manager: &M) -> bool {
         .unwrap_or(false)
 }
 
+fn settings_is_visible<R: Runtime, M: Manager<R>>(manager: &M) -> bool {
+    manager
+        .get_webview_window(MAIN_LABEL)
+        .and_then(|window| window.is_visible().ok())
+        .unwrap_or(false)
+}
+
 fn current_overlay_item_type(state: &State<'_, AppState>) -> OverlayItemType {
     *state
         .overlay_item_type
         .lock()
         .expect("overlay item type mutex poisoned")
+}
+
+fn emit_overlay_visibility_changed<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    visible: bool,
+) -> tauri::Result<()> {
+    app.emit(OVERLAY_VISIBILITY_CHANGED_EVENT, visible)?;
+    Ok(())
 }
 
 fn overlay_dimensions(overlay_item_type: OverlayItemType) -> (f64, f64) {
@@ -343,6 +361,7 @@ fn update_tray_menu<R: Runtime>(app_handle: &tauri::AppHandle<R>) -> tauri::Resu
     };
 
     let overlay_visible = overlay_is_visible(app_handle);
+    let settings_visible = settings_is_visible(app_handle);
     let overlay_item_type = *app_handle
         .state::<AppState>()
         .overlay_item_type
@@ -359,11 +378,17 @@ fn update_tray_menu<R: Runtime>(app_handle: &tauri::AppHandle<R>) -> tauri::Resu
     } else {
         "Show Overlay"
     };
+    let settings_text = if settings_visible {
+        "Hide Settings"
+    } else {
+        "Open Settings"
+    };
 
     let status_item = MenuItemBuilder::with_id(MENU_STATUS_ID, status_text)
         .enabled(false)
         .build(app_handle)?;
     let toggle_item = MenuItemBuilder::with_id(MENU_TOGGLE_ID, toggle_text).build(app_handle)?;
+    let settings_item = MenuItemBuilder::with_id(MENU_SETTINGS_ID, settings_text).build(app_handle)?;
     let type1_item = CheckMenuItemBuilder::with_id(MENU_TYPE1_ID, "Type1")
         .checked(matches!(overlay_item_type, OverlayItemType::Type1))
         .build(app_handle)?;
@@ -376,6 +401,7 @@ fn update_tray_menu<R: Runtime>(app_handle: &tauri::AppHandle<R>) -> tauri::Resu
         .item(&status_item)
         .separator()
         .item(&toggle_item)
+        .item(&settings_item)
         .separator()
         .item(&type1_item)
         .item(&type2_item)
@@ -415,22 +441,49 @@ fn get_overlay_item_type(state: State<'_, AppState>) -> OverlayItemType {
 }
 
 #[tauri::command]
+fn is_overlay_visible(app: tauri::AppHandle) -> bool {
+    overlay_is_visible(&app)
+}
+
+#[tauri::command]
 fn show_overlay(app: tauri::AppHandle, state: State<'_, AppState>) -> tauri::Result<()> {
     let overlay_item_type = current_overlay_item_type(&state);
 
     if let Some(window) = app.get_webview_window(OVERLAY_LABEL) {
         position_overlay_window(&window, overlay_item_type)?;
+        emit_overlay_visibility_changed(&app, true)?;
         update_tray_menu(&app)?;
         return Ok(());
     }
 
     create_overlay_window(&app, overlay_item_type)?;
+    emit_overlay_visibility_changed(&app, true)?;
     update_tray_menu(&app)
 }
 
 #[tauri::command]
 fn hide_overlay(app: tauri::AppHandle) -> tauri::Result<()> {
     if let Some(window) = app.get_webview_window(OVERLAY_LABEL) {
+        window.hide()?;
+    }
+
+    emit_overlay_visibility_changed(&app, false)?;
+    update_tray_menu(&app)?;
+    Ok(())
+}
+
+fn show_settings(app: tauri::AppHandle) -> tauri::Result<()> {
+    if let Some(window) = app.get_webview_window(MAIN_LABEL) {
+        window.show()?;
+        window.set_focus()?;
+    }
+
+    update_tray_menu(&app)?;
+    Ok(())
+}
+
+fn hide_settings(app: tauri::AppHandle) -> tauri::Result<()> {
+    if let Some(window) = app.get_webview_window(MAIN_LABEL) {
         window.hide()?;
     }
 
@@ -445,14 +498,17 @@ fn toggle_overlay(app: tauri::AppHandle, state: State<'_, AppState>) -> tauri::R
     if let Some(window) = app.get_webview_window(OVERLAY_LABEL) {
         if window.is_visible().unwrap_or(false) {
             window.hide()?;
+            emit_overlay_visibility_changed(&app, false)?;
         } else {
             position_overlay_window(&window, overlay_item_type)?;
+            emit_overlay_visibility_changed(&app, true)?;
         }
         update_tray_menu(&app)?;
         return Ok(());
     }
 
     create_overlay_window(&app, overlay_item_type)?;
+    emit_overlay_visibility_changed(&app, true)?;
     update_tray_menu(&app)
 }
 
@@ -475,6 +531,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             get_overlay_item_type,
+            is_overlay_visible,
             set_type1,
             set_type2,
             show_overlay,
@@ -482,8 +539,12 @@ pub fn run() {
             toggle_overlay
         ])
         .setup(|app| {
-            if let Some(main_window) = app.get_webview_window("main") {
-                main_window.hide()?;
+            app.handle()
+                .set_activation_policy(ActivationPolicy::Accessory)?;
+
+            if let Some(main_window) = app.get_webview_window(MAIN_LABEL) {
+                main_window.show()?;
+                main_window.set_focus()?;
             }
 
             macos_global_shortcut::register_cmd_b_shortcut(app.handle().clone())?;
@@ -495,13 +556,14 @@ pub fn run() {
                 .expect("overlay item type mutex poisoned");
 
             create_overlay_window(app, overlay_item_type)?;
+            emit_overlay_visibility_changed(app.handle(), true)?;
             update_tray_menu(app.handle())?;
 
             Ok(())
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == OVERLAY_LABEL {
+                if window.label() == OVERLAY_LABEL || window.label() == MAIN_LABEL {
                     let _ = window.hide();
                     api.prevent_close();
                 }
@@ -517,6 +579,13 @@ pub fn run() {
             MENU_TYPE2_ID => {
                 let _ = set_type2(app.clone(), app.state::<AppState>());
             }
+            MENU_SETTINGS_ID => {
+                if settings_is_visible(app) {
+                    let _ = hide_settings(app.clone());
+                } else {
+                    let _ = show_settings(app.clone());
+                }
+            }
             MENU_QUIT_ID => {
                 app.exit(0);
             }
@@ -531,7 +600,7 @@ pub fn run() {
             ..
         } = event
         {
-            let _ = show_overlay(app_handle.clone(), app_handle.state::<AppState>());
+            let _ = show_settings(app_handle.clone());
         }
     });
 }
